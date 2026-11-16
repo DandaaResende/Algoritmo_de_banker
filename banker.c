@@ -251,6 +251,35 @@ int read_customers(Banker *banker) {
     return 1;
 }
 
+
+/*
+ * Inicializa as estruturas de alocacao e necessidade.
+ */
+int initialize_banker(Banker *banker) {
+    banker->allocation = allocate_matrix(
+        banker->number_of_customers,
+        banker->number_of_resources
+    );
+
+    banker->need = allocate_matrix(
+        banker->number_of_customers,
+        banker->number_of_resources
+    );
+
+    if (banker->allocation == NULL || banker->need == NULL) {
+        fprintf(stderr, "Erro: falha ao alocar matrizes do Banker.\n");
+        return 0;
+    }
+
+    for (int i = 0; i < banker->number_of_customers; i++) {
+        for (int j = 0; j < banker->number_of_resources; j++) {
+            banker->need[i][j] = banker->maximum[i][j];
+        }
+    }
+
+    return 1;
+}
+
 int main(int argc, char *argv[]) {
     Banker banker = {0};
 
@@ -260,6 +289,11 @@ int main(int argc, char *argv[]) {
     }
 
     if (!read_customers(&banker)) {
+        free_banker(&banker);
+        return EXIT_FAILURE;
+    }
+
+    if (!initialize_banker(&banker)) {
         free_banker(&banker);
         return EXIT_FAILURE;
     }
