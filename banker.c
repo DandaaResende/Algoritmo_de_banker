@@ -280,6 +280,47 @@ int initialize_banker(Banker *banker) {
     return 1;
 }
 
+
+/*
+ * Exibe o estado atual do algoritmo Banker.
+ */
+void print_state(Banker *banker) {
+    printf("\nMAXIMUM\n");
+
+    for (int i = 0; i < banker->number_of_customers; i++) {
+        for (int j = 0; j < banker->number_of_resources; j++) {
+            printf("%d ", banker->maximum[i][j]);
+        }
+        printf("\n");
+    }
+
+    printf("\nALLOCATION\n");
+
+    for (int i = 0; i < banker->number_of_customers; i++) {
+        for (int j = 0; j < banker->number_of_resources; j++) {
+            printf("%d ", banker->allocation[i][j]);
+        }
+        printf("\n");
+    }
+
+    printf("\nNEED\n");
+
+    for (int i = 0; i < banker->number_of_customers; i++) {
+        for (int j = 0; j < banker->number_of_resources; j++) {
+            printf("%d ", banker->need[i][j]);
+        }
+        printf("\n");
+    }
+
+    printf("\nAVAILABLE\n");
+
+    for (int j = 0; j < banker->number_of_resources; j++) {
+        printf("%d ", banker->available[j]);
+    }
+
+    printf("\n");
+}
+
 int main(int argc, char *argv[]) {
     Banker banker = {0};
 
@@ -297,6 +338,8 @@ int main(int argc, char *argv[]) {
         free_banker(&banker);
         return EXIT_FAILURE;
     }
+
+    print_state(&banker);
 
     printf("Recursos: %d\n", banker.number_of_resources);
     printf("Clientes: %d\n", banker.number_of_customers);
