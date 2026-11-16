@@ -291,42 +291,44 @@ int initialize_banker(Banker *banker) {
 /*
  * Exibe o estado atual do algoritmo Banker.
  */
-void print_state(Banker *banker) {
-    printf("\nMAXIMUM\n");
+
+void print_state(Banker *banker, FILE *output) {
+    fprintf(output, "\nMAXIMUM\n");
 
     for (int i = 0; i < banker->number_of_customers; i++) {
         for (int j = 0; j < banker->number_of_resources; j++) {
-            printf("%d ", banker->maximum[i][j]);
+            fprintf(output, "%d ", banker->maximum[i][j]);
         }
-        printf("\n");
+        fprintf(output, "\n");
     }
 
-    printf("\nALLOCATION\n");
+    fprintf(output, "\nALLOCATION\n");
 
     for (int i = 0; i < banker->number_of_customers; i++) {
         for (int j = 0; j < banker->number_of_resources; j++) {
-            printf("%d ", banker->allocation[i][j]);
+            fprintf(output, "%d ", banker->allocation[i][j]);
         }
-        printf("\n");
+        fprintf(output, "\n");
     }
 
-    printf("\nNEED\n");
+    fprintf(output, "\nNEED\n");
 
     for (int i = 0; i < banker->number_of_customers; i++) {
         for (int j = 0; j < banker->number_of_resources; j++) {
-            printf("%d ", banker->need[i][j]);
+            fprintf(output, "%d ", banker->need[i][j]);
         }
-        printf("\n");
+        fprintf(output, "\n");
     }
 
-    printf("\nAVAILABLE\n");
+    fprintf(output, "\nAVAILABLE\n");
 
     for (int j = 0; j < banker->number_of_resources; j++) {
-        printf("%d ", banker->available[j]);
+        fprintf(output, "%d ", banker->available[j]);
     }
 
-    printf("\n");
+    fprintf(output, "\n");
 }
+
 
 /*
  * Verifica se o estado atual do sistema e seguro.
@@ -395,8 +397,9 @@ int is_safe_state(Banker *banker) {
  * Processa uma solicitacao de recursos de um cliente.
  * Retorna 1 se aceita, 0 se negada e -1 em caso de erro.
  */
+
 int request_resources(Banker *banker, int customer,
-                      int request[]) {
+                      int request[], FILE *output) {
     if (customer < 0 || customer >= banker->number_of_customers) {
         fprintf(stderr, "Erro: cliente invalido.\n");
         return 0;
@@ -404,14 +407,16 @@ int request_resources(Banker *banker, int customer,
 
     for (int j = 0; j < banker->number_of_resources; j++) {
         if (request[j] < 0 || request[j] > banker->need[customer][j]) {
-            printf("Solicitacao negada: pedido maior que a necessidade.\n");
+            fprintf(output,
+                    "Solicitacao negada: pedido maior que a necessidade.\n");
             return 0;
         }
     }
 
     for (int j = 0; j < banker->number_of_resources; j++) {
         if (request[j] > banker->available[j]) {
-            printf("Solicitacao negada: recursos indisponiveis.\n");
+            fprintf(output,
+                    "Solicitacao negada: recursos indisponiveis.\n");
             return 0;
         }
     }
@@ -437,11 +442,11 @@ int request_resources(Banker *banker, int customer,
             return -1;
         }
 
-        printf("Solicitacao negada: estado inseguro.\n");
+        fprintf(output, "Solicitacao negada: estado inseguro.\n");
         return 0;
     }
 
-    printf("Solicitacao aprovada.\n");
+    fprintf(output, "Solicitacao aprovada.\n");
     return 1;
 }
 
@@ -449,8 +454,10 @@ int request_resources(Banker *banker, int customer,
  * Processa a liberacao de recursos de um cliente.
  * Retorna 1 se aceita e 0 se negada.
  */
+
+
 int release_resources(Banker *banker, int customer,
-                      int release[]) {
+                      int release[], FILE *output) {
     if (customer < 0 || customer >= banker->number_of_customers) {
         fprintf(stderr, "Erro: cliente invalido.\n");
         return 0;
@@ -459,7 +466,8 @@ int release_resources(Banker *banker, int customer,
     for (int j = 0; j < banker->number_of_resources; j++) {
         if (release[j] < 0 ||
             release[j] > banker->allocation[customer][j]) {
-            printf("Liberacao negada: quantidade invalida.\n");
+            fprintf(output,
+                    "Liberacao negada: quantidade invalida.\n");
             return 0;
         }
     }
@@ -470,9 +478,10 @@ int release_resources(Banker *banker, int customer,
         banker->need[customer][j] += release[j];
     }
 
-    printf("Liberacao aprovada.\n");
+    fprintf(output, "Liberacao aprovada.\n");
     return 1;
 }
+
 
 /*
  * Converte um texto em inteiro, verificando se o valor e valido.
@@ -498,11 +507,20 @@ int parse_integer(const char *text, int *value) {
 /*
  * Le os comandos do arquivo commands.txt e executa cada operacao.
  */
+
 int process_commands(Banker *banker) {
     FILE *file = fopen("commands.txt", "r");
 
     if (file == NULL) {
         fprintf(stderr, "Erro: nao foi possivel abrir commands.txt.\n");
+        return 0;
+    }
+
+    FILE *output = fopen("result.txt", "w");
+
+    if (output == NULL) {
+        fprintf(stderr, "Erro: nao foi possivel criar result.txt.\n");
+        fclose(file);
         return 0;
     }
 
@@ -518,6 +536,7 @@ int process_commands(Banker *banker) {
     if (values == NULL) {
         fprintf(stderr, "Erro: falha ao alocar memoria.\n");
         fclose(file);
+        fclose(output);
         return 0;
     }
 
@@ -542,7 +561,7 @@ int process_commands(Banker *banker) {
                 goto error;
             }
 
-            print_state(banker);
+            print_state(banker, output);
             continue;
         }
 
@@ -580,13 +599,17 @@ int process_commands(Banker *banker) {
         int *resources = &values[1];
 
         if (is_request) {
-            int result = request_resources(banker, customer, resources);
+            int result = request_resources(
+                banker, customer, resources, output
+            );
 
             if (result == -1) {
                 goto error;
             }
         } else {
-            release_resources(banker, customer, resources);
+            release_resources(
+                banker, customer, resources, output
+            );
         }
     }
 
@@ -599,15 +622,22 @@ int process_commands(Banker *banker) {
     free(line);
     fclose(file);
 
+    if (fclose(output) != 0) {
+        fprintf(stderr, "Erro ao finalizar result.txt.\n");
+        return 0;
+    }
+
     return 1;
 
 error:
     free(values);
     free(line);
     fclose(file);
+    fclose(output);
 
     return 0;
 }
+
 
 /*
  * Funcao principal.
