@@ -384,6 +384,71 @@ int is_safe_state(Banker *banker) {
     return finished_count == banker->number_of_customers;
 }
 
+
+/*
+ * Processa uma solicitacao de recursos de um cliente.
+ * Retorna 1 se aceita, 0 se negada e -1 em caso de erro.
+ */
+int request_resources(Banker *banker, int customer,
+                      int request[]) {
+    if (customer < 0 || customer >= banker->number_of_customers) {
+        fprintf(stderr, "Erro: cliente invalido.\n");
+        return 0;
+    }
+
+    /* Verifica se o pedido nao ultrapassa a necessidade. */
+    for (int j = 0; j < banker->number_of_resources; j++) {
+        if (request[j] < 0 || request[j] > banker->need[customer][j]) {
+            printf("Solicitacao negada: pedido maior que a necessidade.\n");
+            return 0;
+        }
+    }
+
+    /* Verifica se existem recursos disponiveis. */
+    for (int j = 0; j < banker->number_of_resources; j++) {
+        if (request[j] > banker->available[j]) {
+            printf("Solicitacao negada: recursos indisponiveis.\n");
+            return 0;
+        }
+    }
+
+    /* Simula a alocacao dos recursos. */
+    for (int j = 0; j < banker->number_of_resources; j++) {
+        banker->available[j] -= request[j];
+        banker->allocation[customer][j] += request[j];
+        banker->need[customer][j] -= request[j];
+    }
+
+    /* Verifica se o novo estado continua seguro. */
+    int safe = is_safe_state(banker);
+
+    if (safe == -1) {
+        /* Desfaz a simulacao em caso de erro. */
+        for (int j = 0; j < banker->number_of_resources; j++) {
+            banker->available[j] += request[j];
+            banker->allocation[customer][j] -= request[j];
+            banker->need[customer][j] += request[j];
+        }
+
+        return -1;
+    }
+
+    if (!safe) {
+        /* Desfaz a solicitacao se o estado ficar inseguro. */
+        for (int j = 0; j < banker->number_of_resources; j++) {
+            banker->available[j] += request[j];
+            banker->allocation[customer][j] -= request[j];
+            banker->need[customer][j] += request[j];
+        }
+
+        printf("Solicitacao negada: estado inseguro.\n");
+        return 0;
+    }
+
+    printf("Solicitacao aprovada.\n");
+    return 1;
+}
+
 int main(int argc, char *argv[]) {
     Banker banker = {0};
 
@@ -414,6 +479,12 @@ int main(int argc, char *argv[]) {
         free_banker(&banker);
         return EXIT_FAILURE;
     }
+
+    int request[] = {0, 1, 0};
+
+    request_resources(&banker, 0, request);
+
+    print_state(&banker);
 
     printf("Recursos: %d\n", banker.number_of_resources);
     printf("Clientes: %d\n", banker.number_of_customers);
