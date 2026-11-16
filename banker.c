@@ -321,6 +321,69 @@ void print_state(Banker *banker) {
     printf("\n");
 }
 
+
+/*
+ * Verifica se o estado atual do sistema e seguro.
+ * Retorna 1 se for seguro, 0 se for inseguro e -1 em caso de erro.
+ */
+int is_safe_state(Banker *banker) {
+    int *work = malloc(
+        banker->number_of_resources * sizeof(int)
+    );
+
+    int *finish = calloc(
+        banker->number_of_customers, sizeof(int)
+    );
+
+    if (work == NULL || finish == NULL) {
+        free(work);
+        free(finish);
+        fprintf(stderr, "Erro: falha ao verificar estado seguro.\n");
+        return -1;
+    }
+
+    for (int j = 0; j < banker->number_of_resources; j++) {
+        work[j] = banker->available[j];
+    }
+
+    int finished_count = 0;
+    int progress = 1;
+
+    while (finished_count < banker->number_of_customers && progress) {
+        progress = 0;
+
+        for (int i = 0; i < banker->number_of_customers; i++) {
+            if (finish[i]) {
+                continue;
+            }
+
+            int can_finish = 1;
+
+            for (int j = 0; j < banker->number_of_resources; j++) {
+                if (banker->need[i][j] > work[j]) {
+                    can_finish = 0;
+                    break;
+                }
+            }
+
+            if (can_finish) {
+                for (int j = 0; j < banker->number_of_resources; j++) {
+                    work[j] += banker->allocation[i][j];
+                }
+
+                finish[i] = 1;
+                finished_count++;
+                progress = 1;
+            }
+        }
+    }
+
+    free(work);
+    free(finish);
+
+    return finished_count == banker->number_of_customers;
+}
+
 int main(int argc, char *argv[]) {
     Banker banker = {0};
 
@@ -340,6 +403,17 @@ int main(int argc, char *argv[]) {
     }
 
     print_state(&banker);
+
+    int safe = is_safe_state(&banker);
+
+    if (safe == 1) {
+        printf("\nEstado seguro.\n");
+    } else if (safe == 0) {
+        printf("\nEstado inseguro.\n");
+    } else {
+        free_banker(&banker);
+        return EXIT_FAILURE;
+    }
 
     printf("Recursos: %d\n", banker.number_of_resources);
     printf("Clientes: %d\n", banker.number_of_customers);
