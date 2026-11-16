@@ -449,6 +449,39 @@ int request_resources(Banker *banker, int customer,
     return 1;
 }
 
+
+/*
+ * Processa a liberacao de recursos de um cliente.
+ * Retorna 1 se aceita e 0 se negada.
+ */
+int release_resources(Banker *banker, int customer,
+                      int release[]) {
+    if (customer < 0 || customer >= banker->number_of_customers) {
+        fprintf(stderr, "Erro: cliente invalido.\n");
+        return 0;
+    }
+
+    /* Verifica se o cliente possui os recursos solicitados. */
+    for (int j = 0; j < banker->number_of_resources; j++) {
+        if (release[j] < 0 ||
+            release[j] > banker->allocation[customer][j]) {
+            printf("Liberacao negada: quantidade invalida.\n");
+            return 0;
+        }
+    }
+
+
+    /* Atualiza as estruturas do Banker. */
+    for (int j = 0; j < banker->number_of_resources; j++) {
+        banker->available[j] += release[j];
+        banker->allocation[customer][j] -= release[j];
+        banker->need[customer][j] += release[j];
+    }
+
+    printf("Liberacao aprovada.\n");
+    return 1;
+}
+
 int main(int argc, char *argv[]) {
     Banker banker = {0};
 
@@ -483,6 +516,12 @@ int main(int argc, char *argv[]) {
     int request[] = {0, 1, 0};
 
     request_resources(&banker, 0, request);
+
+    print_state(&banker);
+
+    int release[] = {0, 1, 0};
+
+    release_resources(&banker, 0, release);
 
     print_state(&banker);
 
